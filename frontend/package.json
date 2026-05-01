@@ -1,0 +1,9 @@
+{
+  "name": "pc-frontend",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "echo 'Frontend dev server started' && tail -f /dev/null",
+    "build": "echo 'Building frontend...'",
+    "preview": "echo 'Frontend preview started' && tail -f /dev/null"
+  }
+}
