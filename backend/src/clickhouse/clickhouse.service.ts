@@ -4,7 +4,7 @@ import { createClient, ClickHouseClient } from '@clickhouse/client';
 
 @Injectable()
 export class ClickhouseService implements OnModuleInit, OnModuleDestroy {
-  private client: ClickHouseClient;
+  private client!: ClickHouseClient;
 
   constructor(private configService: ConfigService) {}
 
