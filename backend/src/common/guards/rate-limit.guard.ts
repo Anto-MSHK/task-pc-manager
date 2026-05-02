@@ -1,27 +1,46 @@
-import { Injectable, CanActivate, ExecutionContext, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
+import { Request } from 'express';
+import { randomUUID } from 'crypto';
 import { RedisService } from '../../redis/redis.service';
+
+const WINDOW_SECONDS = 60;
+const MAX_REQUESTS = 10;
 
 @Injectable()
 export class RateLimitGuard implements CanActivate {
   constructor(private readonly redisService: RedisService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    const ip = request.ip || request.connection.remoteAddress;
+    const request = context.switchToHttp().getRequest<Request>();
+    const ip = request.ip || request.socket.remoteAddress || 'unknown';
     const redisClient = this.redisService.getClient();
-    
-    // Simplistic fixed window rate limiting for demonstration
-    // E.g. 10 requests per minute
-    const key = `rate-limit:${ip}`;
-    const current = await redisClient.incr(key);
-    if (current === 1) {
-      await redisClient.expire(key, 60);
+
+    const now = Date.now();
+    const windowStart = now - WINDOW_SECONDS * 1000;
+    const route = `${request.method}:${request.route?.path ?? request.path}`;
+    const key = `rate-limit:${route}:${ip}`;
+
+    await redisClient.zremrangebyscore(key, 0, windowStart);
+    await redisClient.zadd(key, now, `${now}:${randomUUID()}`);
+    await redisClient.expire(key, WINDOW_SECONDS);
+
+    const current = await redisClient.zcard(key);
+    if (current > MAX_REQUESTS) {
+      throw new HttpException(
+        {
+          message: `Rate limit exceeded. Try again in ${WINDOW_SECONDS} seconds.`,
+          error: 'Too Many Requests',
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
-    
-    if (current > 10) {
-      throw new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS);
-    }
-    
+
     return true;
   }
 }

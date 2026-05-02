@@ -2,8 +2,27 @@
   "name": "pc-frontend",
   "version": "1.0.0",
   "scripts": {
-    "dev": "echo 'Frontend dev server started' && tail -f /dev/null",
-    "build": "echo 'Building frontend...'",
-    "preview": "echo 'Frontend preview started' && tail -f /dev/null"
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@ant-design/pro-components": "^2.8.10",
+    "@tanstack/react-query": "^5.100.8",
+    "@vitejs/plugin-react": "^4.7.0",
+    "antd": "^5.29.3",
+    "axios": "^1.15.2",
+    "dayjs": "^1.11.20",
+    "jwt-decode": "^4.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.3",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.21",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.28",
+    "@types/react-dom": "^18.3.7"
   }
 }
