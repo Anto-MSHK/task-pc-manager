@@ -32,9 +32,12 @@ export interface Order {
   updatedAt: string;
 }
 
-export interface AuthResponse {
+export interface TokenPair {
   accessToken: string;
   refreshToken: string;
+}
+
+export interface AuthResponse extends TokenPair {
   user: User;
 }
 

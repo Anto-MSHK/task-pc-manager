@@ -3,10 +3,10 @@ import { useAuthStore } from '../store/authStore';
 
 export function ProtectedRoute() {
   const location = useLocation();
-  const isTokenValid = useAuthStore((state) => state.isTokenValid);
+  const hasSession = useAuthStore((state) => state.hasSession);
   const logout = useAuthStore((state) => state.logout);
 
-  if (!isTokenValid()) {
+  if (!hasSession()) {
     logout();
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }

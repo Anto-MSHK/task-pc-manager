@@ -1,9 +1,26 @@
-import { ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, Card, DatePicker, Form, Input, InputNumber, Modal, Space, Switch, Tag, Typography, message } from 'antd';
+import { ProTable, type ProColumns } from '@ant-design/pro-components';
+import {
+  Button,
+  Card,
+  DatePicker,
+  Empty,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Space,
+  Switch,
+  Tag,
+  Typography,
+  message,
+} from 'antd';
 import dayjs from 'dayjs';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { IMAGES } from '../config/assets';
+import { AnalyticsTableHost } from '../components/AnalyticsTableHost';
 import { api } from '../config/api';
 import { useAnalyticsTable } from '../hooks/useAnalyticsTable';
+import { useSearchFormProps } from '../hooks/useSearchFormProps';
 import { useDateRangeStore } from '../store/dateRangeStore';
 import type { PromocodesAnalyticsRow } from '../types/api';
 
@@ -19,8 +36,15 @@ interface PromocodeForm {
 
 export function PromocodesPage() {
   const range = useDateRangeStore((state) => state.range);
-  const request = useAnalyticsTable<PromocodesAnalyticsRow>('/analytics/promocodes');
-  const actionRef = useRef<ActionType>();
+  const { loading, request, actionRef, formRef } = useAnalyticsTable<PromocodesAnalyticsRow>('/analytics/promocodes');
+  const searchFormProps = useSearchFormProps(formRef);
+  const dateRangeParams = useMemo(
+    () => ({
+      dateFrom: range[0].toISOString(),
+      dateTo: range[1].toISOString(),
+    }),
+    [range],
+  );
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PromocodesAnalyticsRow | null>(null);
   const [form] = Form.useForm<PromocodeForm>();
@@ -55,7 +79,7 @@ export function PromocodesPage() {
       { title: 'Search code', dataIndex: 'search', hideInTable: true },
       { title: 'Min usages', dataIndex: 'minUsageCount', valueType: 'digit', hideInTable: true },
       { title: 'Max usages', dataIndex: 'maxUsageCount', valueType: 'digit', hideInTable: true },
-      { title: 'Code', dataIndex: 'code', sorter: true },
+      { title: 'Code', dataIndex: 'code', sorter: true, search: false },
       { title: 'Discount %', dataIndex: 'discountPercent', sorter: true, search: false },
       {
         title: 'Status',
@@ -67,7 +91,14 @@ export function PromocodesPage() {
           true: { text: 'Active', status: 'Success' },
           false: { text: 'Inactive', status: 'Default' },
         },
-        render: (_, row) => <Tag color={row.isActive ? 'green' : 'default'}>{row.isActive ? 'Active' : 'Inactive'}</Tag>,
+        render: (_, row) => (
+          <Tag
+            bordered={false}
+            className={`status-badge ${row.isActive ? 'status-badge--active' : 'status-badge--inactive'}`}
+          >
+            {row.isActive ? 'Active' : 'Inactive'}
+          </Tag>
+        ),
       },
       { title: 'Usage count', dataIndex: 'usageCount', sorter: true, search: false },
       { title: 'Unique users', dataIndex: 'uniqueUsers', sorter: true, search: false },
@@ -113,7 +144,7 @@ export function PromocodesPage() {
         ],
       },
     ],
-    [form],
+    [form, actionRef],
   );
 
   return (
@@ -124,15 +155,37 @@ export function PromocodesPage() {
           Create promocode
         </Button>
       </div>
-      <Card className="glass-card">
-        <ProTable<PromocodesAnalyticsRow>
-          key={`${range[0].toISOString()}-${range[1].toISOString()}`}
-          actionRef={actionRef}
-          rowKey="id"
-          columns={columns}
-          request={request}
-          pagination={{ defaultPageSize: 20, showSizeChanger: true }}
-        />
+      <Card className="glass-card table-card">
+        <AnalyticsTableHost loading={loading}>
+          <ProTable<PromocodesAnalyticsRow>
+            params={dateRangeParams}
+            actionRef={actionRef}
+            formRef={formRef}
+            rowKey="id"
+            columns={columns}
+            request={request}
+            loading={false}
+            defaultSize="middle"
+            tableClassName="analytics-table"
+            scroll={{ x: 'max-content' }}
+            search={searchFormProps}
+            options={{ density: false, fullScreen: true, reload: true, setting: true }}
+            pagination={{
+              defaultPageSize: 20,
+              showSizeChanger: true,
+              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
+            }}
+            locale={{
+              emptyText: (
+                <Empty
+                  image={IMAGES.emptyPromocode}
+                  imageStyle={{ height: 140 }}
+                  description="No promocodes in this date range"
+                />
+              ),
+            }}
+          />
+        </AnalyticsTableHost>
       </Card>
       <Modal
         title={editing ? 'Edit promocode' : 'Create promocode'}

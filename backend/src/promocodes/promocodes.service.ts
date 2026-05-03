@@ -149,8 +149,11 @@ export class PromocodesService {
   }
 
   /**
-   * When promocode code changes, re-insert denormalized rows in CH
-   * so that orders.promocodeCode and promo_usages.promocodeCode stay consistent.
+   * When promocode code changes, re-insert denormalized rows in the orders CH table
+   * (ReplacingMergeTree) so that orders.promocodeCode stays consistent.
+   *
+   * Note: promo_usages is an append-only MergeTree, so each row is a historical snapshot
+   * of the promocode code at the moment of use; we intentionally don't rewrite it.
    */
   private async syncPromocodeCascade(promocode: Promocode): Promise<void> {
     const promocodeId = promocode._id.toString();
@@ -168,53 +171,24 @@ export class PromocodesService {
       updatedAt: string;
     };
 
-    type UsageRow = {
-      id: string;
-      userId: string;
-      userName: string;
-      userEmail: string;
-      promocodeId: string;
-      orderId: string;
-      discountAmount: number;
-      usedAt: string;
-      createdAt: string;
-    };
+    const orders = await this.clickhouseService.queryRows<OrderRow>(
+      `SELECT DISTINCT ON (id) id, userId, userName, userEmail, promocodeId,
+              amount, discountAmount, finalAmount, createdAt, updatedAt
+       FROM orders FINAL
+       WHERE promocodeId = {promocodeId:String}`,
+      { promocodeId },
+    );
 
-    const [orders, usages] = await Promise.all([
-      this.clickhouseService.queryRows<OrderRow>(
-        `SELECT DISTINCT ON (id) id, userId, userName, userEmail, promocodeId,
-                amount, discountAmount, finalAmount, createdAt, updatedAt
-         FROM orders FINAL
-         WHERE promocodeId = {promocodeId:String}`,
-        { promocodeId },
-      ),
-      this.clickhouseService.queryRows<UsageRow>(
-        `SELECT DISTINCT ON (id) id, userId, userName, userEmail, promocodeId,
-                orderId, discountAmount, usedAt, createdAt
-         FROM promo_usages FINAL
-         WHERE promocodeId = {promocodeId:String}`,
-        { promocodeId },
-      ),
-    ]);
+    if (orders.length === 0) {
+      return;
+    }
 
     const updatedOrders = orders.map((row) => ({
       ...row,
       promocodeCode: promocode.code,
     }));
 
-    const updatedUsages = usages.map((row) => ({
-      ...row,
-      promocodeCode: promocode.code,
-    }));
-
-    await Promise.all([
-      updatedOrders.length > 0
-        ? this.clickhouseService.insertRows('orders', updatedOrders)
-        : Promise.resolve(),
-      updatedUsages.length > 0
-        ? this.clickhouseService.insertRows('promo_usages', updatedUsages)
-        : Promise.resolve(),
-    ]);
+    await this.clickhouseService.insertRows('orders', updatedOrders);
   }
 
   private toOutboxPayload(promocode: Promocode): Record<string, unknown> {

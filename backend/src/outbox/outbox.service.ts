@@ -2,12 +2,25 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Model } from 'mongoose';
 import { ClickhouseService } from '../clickhouse/clickhouse.service';
+import { RedisService } from '../redis/redis.service';
 import { OutboxEvent } from './schemas/outbox-event.schema';
 import { SyncFailure } from './schemas/sync-failure.schema';
 
+type AggregateType = 'users' | 'promocodes' | 'orders' | 'promo_usages';
+type AnalyticsNamespace = 'users' | 'promocodes' | 'promo-usages' | 'summary';
+
+const ANALYTICS_NAMESPACES_BY_AGGREGATE: Record<AggregateType, AnalyticsNamespace[]> = {
+  users: ['users', 'summary'],
+  promocodes: ['promocodes', 'summary'],
+  // Orders affect user spend aggregates and promocode revenue aggregates.
+  orders: ['users', 'promocodes', 'summary'],
+  // Promo usage adds to all three table aggregates and the summary.
+  promo_usages: ['users', 'promocodes', 'promo-usages', 'summary'],
+};
+
 interface EnqueueOutboxEventInput {
   eventType: string;
-  aggregateType: 'users' | 'promocodes' | 'orders' | 'promo_usages';
+  aggregateType: AggregateType;
   aggregateId: string;
   operation?: 'upsert' | 'append';
   payload: Record<string, unknown>;
@@ -30,6 +43,7 @@ export class OutboxService implements OnModuleInit, OnModuleDestroy {
     @InjectModel(SyncFailure.name)
     private readonly syncFailureModel: Model<SyncFailure>,
     private readonly clickhouseService: ClickhouseService,
+    private readonly redisService: RedisService,
   ) {}
 
   onModuleInit(): void {
@@ -136,6 +150,9 @@ export class OutboxService implements OnModuleInit, OnModuleDestroy {
       event.lockedAt = undefined;
       await event.save();
 
+      // Drop stale analytics caches so the new CH state is visible immediately.
+      await this.invalidateAnalyticsCaches(event.aggregateType as AggregateType);
+
       this.logger.debug?.(
         `Synced outbox event ${eventId} (${event.aggregateType}/${event.aggregateId})`,
       );
@@ -178,5 +195,22 @@ export class OutboxService implements OnModuleInit, OnModuleDestroy {
 
   private async syncToClickhouse(event: OutboxEvent): Promise<void> {
     await this.clickhouseService.insertRows(event.aggregateType, [event.payload]);
+  }
+
+  private async invalidateAnalyticsCaches(aggregateType: AggregateType): Promise<void> {
+    const namespaces = ANALYTICS_NAMESPACES_BY_AGGREGATE[aggregateType];
+    if (!namespaces) {
+      return;
+    }
+
+    const client = this.redisService.getClient();
+    await Promise.all(
+      namespaces.map(async (ns) => {
+        const keys = await client.keys(`analytics:${ns}:*`);
+        if (keys.length > 0) {
+          await client.del(...keys);
+        }
+      }),
+    );
   }
 }

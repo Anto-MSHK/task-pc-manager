@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ClickhouseModule } from '../clickhouse/clickhouse.module';
+import { RedisModule } from '../redis/redis.module';
 import { OutboxService } from './outbox.service';
 import { OutboxEvent, OutboxEventSchema } from './schemas/outbox-event.schema';
 import { SyncFailure, SyncFailureSchema } from './schemas/sync-failure.schema';
@@ -12,6 +13,7 @@ import { SyncFailure, SyncFailureSchema } from './schemas/sync-failure.schema';
       { name: SyncFailure.name, schema: SyncFailureSchema },
     ]),
     ClickhouseModule,
+    RedisModule,
   ],
   providers: [OutboxService],
   exports: [OutboxService],

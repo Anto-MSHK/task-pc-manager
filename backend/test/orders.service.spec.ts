@@ -89,7 +89,13 @@ describe('OrdersService.applyPromocode', () => {
     silenceLogger();
 
     const saveMock = jest.fn().mockResolvedValue(undefined);
-    const promoUsageInstance = { _id: new Types.ObjectId(), save: saveMock, discountAmount: 0, usedAt: new Date(), createdAt: new Date() };
+    const promoUsageInstance = {
+      _id: new Types.ObjectId(),
+      save: saveMock,
+      discountAmount: 0,
+      usedAt: new Date(),
+      createdAt: new Date(),
+    };
     const PromoUsageModelMock = jest.fn().mockReturnValue(promoUsageInstance);
     (PromoUsageModelMock as jest.Mock & { countDocuments: jest.Mock }).countDocuments = jest.fn();
     promoUsageModel = PromoUsageModelMock as never;

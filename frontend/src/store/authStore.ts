@@ -1,6 +1,6 @@
 import { jwtDecode } from 'jwt-decode';
 import { create } from 'zustand';
-import type { AuthResponse, User } from '../types/api';
+import type { AuthResponse, TokenPair, User } from '../types/api';
 
 interface JwtPayload {
   exp?: number;
@@ -12,8 +12,12 @@ interface AuthState {
   refreshToken: string | null;
   user: User | null;
   setAuth: (response: AuthResponse) => void;
+  setTokens: (tokens: TokenPair) => void;
   logout: () => void;
+  /** Access JWT not expired (ignores refresh token). */
   isTokenValid: () => boolean;
+  /** Can use the app: valid access JWT or refresh token present for silent rotation. */
+  hasSession: () => boolean;
 }
 
 const ACCESS_TOKEN_KEY = 'pc_access_token';
@@ -48,6 +52,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       user: response.user,
     });
   },
+  setTokens: (tokens) => {
+    localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
+    localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+    set((state) => ({
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      user: state.user,
+    }));
+  },
   logout: () => {
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
@@ -62,6 +75,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const payload = jwtDecode<JwtPayload>(token);
+      return typeof payload.exp === 'number' && payload.exp * 1000 > Date.now();
+    } catch {
+      return false;
+    }
+  },
+  hasSession: () => {
+    const { accessToken, refreshToken } = get();
+    if (refreshToken) {
+      return true;
+    }
+    if (!accessToken) {
+      return false;
+    }
+    try {
+      const payload = jwtDecode<JwtPayload>(accessToken);
       return typeof payload.exp === 'number' && payload.exp * 1000 > Date.now();
     } catch {
       return false;

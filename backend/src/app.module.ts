@@ -1,3 +1,4 @@
+import { join } from 'path';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
@@ -13,11 +14,13 @@ import { validateEnv } from './config/env.validation';
 import { PromocodesModule } from './promocodes/promocodes.module';
 import { OrdersModule } from './orders/orders.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { SeedModule } from './seed/seed.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: [join(__dirname, '..', '..', '.env'), join(__dirname, '..', '.env')],
       validate: validateEnv,
     }),
     JwtGlobalModule,
@@ -30,6 +33,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     OrdersModule,
     AnalyticsModule,
     AuthModule,
+    SeedModule,
   ],
   controllers: [],
   providers: [

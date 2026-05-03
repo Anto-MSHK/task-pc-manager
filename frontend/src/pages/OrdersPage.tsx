@@ -1,5 +1,6 @@
 import { Button, Card, Form, Input, InputNumber, Space, Typography, message } from 'antd';
 import { useState } from 'react';
+import { IMAGES } from '../config/assets';
 import { api } from '../config/api';
 import type { Order } from '../types/api';
 
@@ -34,6 +35,14 @@ export function OrdersPage() {
   return (
     <div className="page-stack">
       <Typography.Title level={1}>Orders</Typography.Title>
+      {!createdOrder ? (
+        <Card className="glass-card orders-intro-card">
+          <img className="orders-intro-img" src={IMAGES.emptyOrder} alt="" decoding="async" />
+          <Typography.Paragraph type="secondary" style={{ textAlign: 'center', marginBottom: 0 }}>
+            Create an order to see its id, discount, and final amount in the card on the right.
+          </Typography.Paragraph>
+        </Card>
+      ) : null}
       <Space align="start" size={16} wrap>
         <Card className="glass-card action-card" title="Create order">
           <Form layout="vertical" onFinish={createOrder}>

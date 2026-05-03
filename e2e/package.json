@@ -1,0 +1,12 @@
+{
+  "name": "pc-e2e",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "node smoke.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.59.1"
+  }
+}

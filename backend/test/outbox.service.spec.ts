@@ -4,6 +4,7 @@ import { OutboxService } from '../src/outbox/outbox.service';
 import { OutboxEvent } from '../src/outbox/schemas/outbox-event.schema';
 import { SyncFailure } from '../src/outbox/schemas/sync-failure.schema';
 import { ClickhouseService } from '../src/clickhouse/clickhouse.service';
+import { RedisService } from '../src/redis/redis.service';
 import { silenceLogger } from './mocks';
 
 const RETRY_DELAYS_MS = [100, 400, 1600, 5000, 15000];
@@ -35,6 +36,8 @@ describe('OutboxService', () => {
   };
   let syncFailureModel: { updateMany: jest.Mock; create: jest.Mock };
   let clickhouseService: { insertRows: jest.Mock };
+  let redisService: { getClient: jest.Mock };
+  let redisClient: { keys: jest.Mock; del: jest.Mock };
 
   beforeEach(async () => {
     silenceLogger();
@@ -53,12 +56,19 @@ describe('OutboxService', () => {
 
     clickhouseService = { insertRows: jest.fn().mockResolvedValue(undefined) };
 
+    redisClient = {
+      keys: jest.fn().mockResolvedValue([]),
+      del: jest.fn().mockResolvedValue(0),
+    };
+    redisService = { getClient: jest.fn().mockReturnValue(redisClient) };
+
     const module = await Test.createTestingModule({
       providers: [
         OutboxService,
         { provide: getModelToken(OutboxEvent.name), useValue: outboxEventModel },
         { provide: getModelToken(SyncFailure.name), useValue: syncFailureModel },
         { provide: ClickhouseService, useValue: clickhouseService },
+        { provide: RedisService, useValue: redisService },
       ],
     }).compile();
 
@@ -159,6 +169,26 @@ describe('OutboxService', () => {
       expect(clickhouseService.insertRows).toHaveBeenCalledWith('users', [event.payload]);
       expect(event.status).toBe('done');
       expect(event.save).toHaveBeenCalled();
+    });
+
+    it('invalidates the matching analytics cache namespaces after successful sync', async () => {
+      const event = makeEvent({ aggregateType: 'promo_usages' });
+      (outboxEventModel.findOneAndUpdate as jest.Mock).mockResolvedValue(event);
+      redisClient.keys.mockResolvedValue(['analytics:promo-usages:abc']);
+
+      await tick(service);
+
+      // promo_usages aggregate should invalidate users + promocodes + promo-usages + summary
+      const queriedNamespaces = (redisClient.keys as jest.Mock).mock.calls.map((call) => call[0]);
+      expect(queriedNamespaces).toEqual(
+        expect.arrayContaining([
+          'analytics:users:*',
+          'analytics:promocodes:*',
+          'analytics:promo-usages:*',
+          'analytics:summary:*',
+        ]),
+      );
+      expect(redisClient.del).toHaveBeenCalled();
     });
 
     // ─────────────────────────────────────────

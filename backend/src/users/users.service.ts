@@ -198,8 +198,11 @@ export class UsersService {
   }
 
   /**
-   * When user name/email changes, re-insert denormalized rows in CH
-   * so that orders.userName/userEmail and promo_usages.userName/userEmail stay consistent.
+   * When user name/email changes, re-insert denormalized rows in the orders CH table
+   * (ReplacingMergeTree) so that orders.userName/userEmail stay consistent.
+   *
+   * Note: promo_usages is an append-only MergeTree, so each row is a historical snapshot
+   * of the user/promocode at the moment of use; we intentionally don't rewrite it.
    */
   private async syncUserCascade(user: User): Promise<void> {
     const userId = user._id.toString();
@@ -216,33 +219,17 @@ export class UsersService {
       updatedAt: string;
     };
 
-    type UsageRow = {
-      id: string;
-      promocodeId: string;
-      promocodeCode: string;
-      userId: string;
-      orderId: string;
-      discountAmount: number;
-      usedAt: string;
-      createdAt: string;
-    };
+    const orders = await this.clickhouseService.queryRows<OrderRow>(
+      `SELECT DISTINCT ON (id) id, userId, promocodeId, promocodeCode,
+              amount, discountAmount, finalAmount, createdAt, updatedAt
+       FROM orders FINAL
+       WHERE userId = {userId:String}`,
+      { userId },
+    );
 
-    const [orders, usages] = await Promise.all([
-      this.clickhouseService.queryRows<OrderRow>(
-        `SELECT DISTINCT ON (id) id, userId, promocodeId, promocodeCode,
-                amount, discountAmount, finalAmount, createdAt, updatedAt
-         FROM orders FINAL
-         WHERE userId = {userId:String}`,
-        { userId },
-      ),
-      this.clickhouseService.queryRows<UsageRow>(
-        `SELECT DISTINCT ON (id) id, promocodeId, promocodeCode, userId,
-                orderId, discountAmount, usedAt, createdAt
-         FROM promo_usages FINAL
-         WHERE userId = {userId:String}`,
-        { userId },
-      ),
-    ]);
+    if (orders.length === 0) {
+      return;
+    }
 
     const updatedOrders = orders.map((row) => ({
       ...row,
@@ -250,19 +237,6 @@ export class UsersService {
       userEmail: user.email,
     }));
 
-    const updatedUsages = usages.map((row) => ({
-      ...row,
-      userName: user.name,
-      userEmail: user.email,
-    }));
-
-    await Promise.all([
-      updatedOrders.length > 0
-        ? this.clickhouseService.insertRows('orders', updatedOrders)
-        : Promise.resolve(),
-      updatedUsages.length > 0
-        ? this.clickhouseService.insertRows('promo_usages', updatedUsages)
-        : Promise.resolve(),
-    ]);
+    await this.clickhouseService.insertRows('orders', updatedOrders);
   }
 }

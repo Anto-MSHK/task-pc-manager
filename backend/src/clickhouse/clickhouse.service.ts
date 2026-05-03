@@ -11,10 +11,14 @@ export class ClickhouseService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     this.client = createClient({
-      host: this.configService.get<string>('CLICKHOUSE_HOST', 'http://localhost:8123'),
+      url: this.configService.get<string>('CLICKHOUSE_HOST', 'http://localhost:8123'),
       database: this.configService.get<string>('CLICKHOUSE_DB', 'default'),
       username: this.configService.get<string>('CLICKHOUSE_USER', 'default'),
       password: this.configService.get<string>('CLICKHOUSE_PASSWORD', ''),
+      clickhouse_settings: {
+        // Accept ISO-8601 strings (e.g. "2026-01-01T12:00:00.000Z") for DateTime64 columns
+        date_time_input_format: 'best_effort',
+      },
     });
 
     await this.createTables();
@@ -38,10 +42,6 @@ export class ClickhouseService implements OnModuleInit, OnModuleDestroy {
       table,
       values: rows,
       format: 'JSONEachRow',
-      clickhouse_settings: {
-        // Accept ISO-8601 strings (e.g. "2026-01-01T12:00:00.000Z") for DateTime64 columns
-        date_time_input_format: 'best_effort',
-      },
     });
   }
 
@@ -55,16 +55,9 @@ export class ClickhouseService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async createTables(): Promise<void> {
-    // Drop + recreate ensures schema changes (e.g. DateTime → DateTime64) are applied on restart.
-    // Safe for dev; in production, use proper migrations.
-    const tables = ['users', 'promocodes', 'orders', 'promo_usages'];
-    for (const t of tables) {
-      await this.client.command({ query: `DROP TABLE IF EXISTS ${t}` });
-    }
-
     await this.client.command({
       query: `
-        CREATE TABLE users (
+        CREATE TABLE IF NOT EXISTS users (
           id String,
           email String,
           name String,
@@ -79,7 +72,7 @@ export class ClickhouseService implements OnModuleInit, OnModuleDestroy {
 
     await this.client.command({
       query: `
-        CREATE TABLE promocodes (
+        CREATE TABLE IF NOT EXISTS promocodes (
           id String,
           code String,
           discountPercent UInt8,
@@ -97,7 +90,7 @@ export class ClickhouseService implements OnModuleInit, OnModuleDestroy {
 
     await this.client.command({
       query: `
-        CREATE TABLE orders (
+        CREATE TABLE IF NOT EXISTS orders (
           id String,
           userId String,
           userName String,
@@ -116,7 +109,7 @@ export class ClickhouseService implements OnModuleInit, OnModuleDestroy {
 
     await this.client.command({
       query: `
-        CREATE TABLE promo_usages (
+        CREATE TABLE IF NOT EXISTS promo_usages (
           id String,
           promocodeId String,
           promocodeCode String,

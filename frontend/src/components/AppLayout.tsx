@@ -3,10 +3,12 @@ import {
   GiftOutlined,
   LogoutOutlined,
   PercentageOutlined,
+  ShoppingOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { Button, Layout, Menu, Typography } from 'antd';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { IMAGES } from '../config/assets';
 import { DateRangeFilter } from './DateRangeFilter';
 import { useAuthStore } from '../store/authStore';
 
@@ -20,27 +22,55 @@ export function AppLayout() {
 
   return (
     <Layout className="app-shell">
-      <Sider breakpoint="lg" collapsedWidth="0" width={250} className="app-sider">
-        <div className="brand">PromoCode Manager</div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          onClick={({ key }) => navigate(key)}
-          items={[
-            { key: '/', icon: <BarChartOutlined />, label: 'Dashboard' },
-            { key: '/analytics/users', icon: <UserOutlined />, label: 'Users analytics' },
-            { key: '/analytics/promocodes', icon: <GiftOutlined />, label: 'Promocodes' },
-            {
-              key: '/analytics/promo-usages',
-              icon: <PercentageOutlined />,
-              label: 'Promo usages',
-            },
-            { key: '/orders', icon: <BarChartOutlined />, label: 'Orders' },
-          ]}
-        />
+      <Sider breakpoint="lg" collapsedWidth="0" width={264} className="app-sider">
+        <div className="app-sider-inner">
+          <div className="brand">
+            <img src={IMAGES.logo} alt="" className="brand-logo" width={48} height={48} />
+            <div className="brand-text">
+              <span className="brand-title">PromoCode</span>
+              <span className="brand-sub">Manager</span>
+            </div>
+          </div>
+          <nav className="app-sider-nav" aria-label="Main navigation">
+            <Menu
+              theme="dark"
+              mode="inline"
+              selectable
+              selectedKeys={[location.pathname]}
+              onClick={({ key }) => navigate(key)}
+              className="app-sider-menu"
+              items={[
+                {
+                  type: 'group',
+                  label: <span className="app-sider-group-label">Overview</span>,
+                  children: [
+                    { key: '/', icon: <BarChartOutlined />, label: 'Dashboard' },
+                  ],
+                },
+                {
+                  type: 'group',
+                  label: <span className="app-sider-group-label">Analytics</span>,
+                  children: [
+                    { key: '/analytics/users', icon: <UserOutlined />, label: 'Users' },
+                    { key: '/analytics/promocodes', icon: <GiftOutlined />, label: 'Promocodes' },
+                    {
+                      key: '/analytics/promo-usages',
+                      icon: <PercentageOutlined />,
+                      label: 'Promo usages',
+                    },
+                  ],
+                },
+                {
+                  type: 'group',
+                  label: <span className="app-sider-group-label">Operations</span>,
+                  children: [{ key: '/orders', icon: <ShoppingOutlined />, label: 'Orders' }],
+                },
+              ]}
+            />
+          </nav>
+        </div>
       </Sider>
-      <Layout>
+      <Layout className="app-main">
         <Header className="app-header">
           <DateRangeFilter />
           <div className="header-user">
