@@ -6,6 +6,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
+import { AntdServiceProvider } from './components/AntdServiceProvider';
 import { queryClient } from './config/queryClient';
 import { theme } from './config/theme';
 import './styles/global.css';
@@ -15,6 +16,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <ConfigProvider theme={{ ...theme, algorithm: antdTheme.darkAlgorithm, cssVar: { key: 'app' } }} locale={enUS}>
       <ProConfigProvider intl={enUSIntl}>
         <AntApp>
+          <AntdServiceProvider />
           <QueryClientProvider client={queryClient}>
             <BrowserRouter>
               <App />

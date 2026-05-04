@@ -34,6 +34,14 @@ export class OrdersService {
     private readonly analyticsService: AnalyticsService,
   ) {}
 
+  async findByUserId(userId: string): Promise<OrderResponseDto[]> {
+    const orders = await this.orderModel
+      .find({ userId: new Types.ObjectId(userId) })
+      .sort({ createdAt: -1 })
+      .exec();
+    return orders.map((o) => new OrderResponseDto(o.toObject()));
+  }
+
   async create(userId: string, dto: CreateOrderDto): Promise<OrderResponseDto> {
     const user = await this.usersService.ensureActiveById(userId);
 

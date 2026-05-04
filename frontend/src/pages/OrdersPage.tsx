@@ -1,13 +1,15 @@
 import {
   CheckCircleOutlined,
   GiftOutlined,
+  HistoryOutlined,
   PlusOutlined,
   ReloadOutlined,
   ShoppingOutlined,
 } from '@ant-design/icons';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
+  App,
   Button,
   Card,
   Divider,
@@ -16,9 +18,11 @@ import {
   InputNumber,
   Space,
   Steps,
+  Table,
+  Tag,
   Typography,
-  message,
 } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -42,6 +46,8 @@ function formatMoney(value: number): string {
 }
 
 export function OrdersPage() {
+  const { message } = App.useApp();
+  const queryClient = useQueryClient();
   const [createForm] = Form.useForm<CreateOrderForm>();
   const [applyForm] = Form.useForm<ApplyPromoForm>();
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
@@ -54,6 +60,11 @@ export function OrdersPage() {
     queryFn: async () => (await api.get<Promocode[]>('/promocodes')).data,
   });
 
+  const { data: orderHistory = [], isLoading: historyLoading } = useQuery({
+    queryKey: ['orders'],
+    queryFn: async () => (await api.get<Order[]>('/orders')).data,
+  });
+
   const activePromos = useMemo(
     () =>
       [...promocodes]
@@ -61,6 +72,54 @@ export function OrdersPage() {
         .sort((a, b) => a.code.localeCompare(b.code))
         .slice(0, 12),
     [promocodes],
+  );
+
+  const promoById = useMemo(
+    () => new Map(promocodes.map((p) => [p.id, p.code])),
+    [promocodes],
+  );
+
+  const historyColumns = useMemo<ColumnsType<Order>>(
+    () => [
+      {
+        title: 'Date',
+        dataIndex: 'createdAt',
+        render: (v: string) => dayjs(v).format('MMM D, YYYY · HH:mm'),
+        width: 160,
+      },
+      {
+        title: 'Subtotal',
+        dataIndex: 'amount',
+        align: 'right',
+        render: (v: number) => formatMoney(v),
+      },
+      {
+        title: 'Discount',
+        dataIndex: 'discountAmount',
+        align: 'right',
+        render: (v: number) =>
+          v > 0 ? <span style={{ color: '#4ade80' }}>−{formatMoney(v)}</span> : '—',
+      },
+      {
+        title: 'Total',
+        dataIndex: 'finalAmount',
+        align: 'right',
+        render: (v: number) => <strong>{formatMoney(v)}</strong>,
+      },
+      {
+        title: 'Promo',
+        dataIndex: 'promocodeId',
+        render: (id?: string) =>
+          id ? (
+            <Tag bordered={false} color="purple">
+              {promoById.get(id) ?? id.slice(-6)}
+            </Tag>
+          ) : (
+            <span style={{ opacity: 0.4 }}>—</span>
+          ),
+      },
+    ],
+    [promoById],
   );
 
   useEffect(() => {
@@ -85,7 +144,8 @@ export function OrdersPage() {
       setCreatedOrder(response.data);
       setAppliedPromoCode(null);
       applyForm.setFieldsValue({ orderId: response.data.id, code: '' });
-      message.success('Order created — you can apply a promocode on the next step.');
+      void message.success('Order created — you can apply a promocode on the next step.');
+      void queryClient.invalidateQueries({ queryKey: ['orders'] });
     } finally {
       setCreating(false);
     }
@@ -94,7 +154,7 @@ export function OrdersPage() {
   const applyPromocode = async (values: ApplyPromoForm) => {
     const code = values.code.trim().toUpperCase();
     if (!code) {
-      message.warning('Enter a promocode');
+      void message.warning('Enter a promocode');
       return;
     }
     setApplying(true);
@@ -103,7 +163,8 @@ export function OrdersPage() {
       setCreatedOrder(response.data);
       setAppliedPromoCode(code);
       applyForm.setFieldValue('code', '');
-      message.success('Promocode applied');
+      void message.success('Promocode applied');
+      void queryClient.invalidateQueries({ queryKey: ['orders'] });
     } finally {
       setApplying(false);
     }
@@ -326,6 +387,31 @@ export function OrdersPage() {
           </div>
         </aside>
       </div>
+
+      <Card
+        className="glass-card"
+        title={
+          <Space>
+            <HistoryOutlined />
+            <span>Order history</span>
+            {orderHistory.length > 0 && (
+              <Tag bordered={false}>{orderHistory.length}</Tag>
+            )}
+          </Space>
+        }
+      >
+        <Table<Order>
+          rowKey="id"
+          columns={historyColumns}
+          dataSource={orderHistory}
+          loading={historyLoading}
+          size="middle"
+          pagination={{ pageSize: 10, hideOnSinglePage: true, showSizeChanger: false }}
+          scroll={{ x: 'max-content' }}
+          locale={{ emptyText: 'No orders yet — create your first one above.' }}
+          className="analytics-table"
+        />
+      </Card>
     </div>
   );
 }

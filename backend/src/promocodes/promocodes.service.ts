@@ -56,6 +56,11 @@ export class PromocodesService {
           session,
         );
       });
+    } catch (err) {
+      if (this.isDuplicateKeyError(err)) {
+        throw new ConflictException('Promocode already exists');
+      }
+      throw err;
     } finally {
       await session.endSession();
     }
@@ -192,6 +197,15 @@ export class PromocodesService {
     }));
 
     await this.clickhouseService.insertRows('orders', updatedOrders);
+  }
+
+  private isDuplicateKeyError(err: unknown): boolean {
+    return (
+      typeof err === 'object' &&
+      err !== null &&
+      'code' in err &&
+      (err as { code: unknown }).code === 11000
+    );
   }
 
   private toOutboxPayload(promocode: Promocode): Record<string, unknown> {

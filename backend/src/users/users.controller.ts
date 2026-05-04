@@ -10,6 +10,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
@@ -42,7 +43,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Get a user by id' })
   @ApiOkResponse({ description: 'User returned successfully', type: UserResponseDto })
   @ApiNotFoundResponse({ description: 'User not found' })
-  async findOne(@Param('id') id: string): Promise<UserResponseDto> {
+  async findOne(@Param('id', ParseObjectIdPipe) id: string): Promise<UserResponseDto> {
     return this.usersService.findOneResponse(id);
   }
 
@@ -51,7 +52,10 @@ export class UsersController {
   @ApiOkResponse({ description: 'User updated successfully', type: UserResponseDto })
   @ApiBadRequestResponse({ description: 'Invalid user payload' })
   @ApiNotFoundResponse({ description: 'User not found' })
-  async update(@Param('id') id: string, @Body() dto: UpdateUserDto): Promise<UserResponseDto> {
+  async update(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body() dto: UpdateUserDto,
+  ): Promise<UserResponseDto> {
     return this.usersService.update(id, dto);
   }
 
@@ -59,7 +63,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Deactivate a user' })
   @ApiOkResponse({ description: 'User deactivated successfully', type: UserResponseDto })
   @ApiNotFoundResponse({ description: 'User not found' })
-  async deactivate(@Param('id') id: string): Promise<UserResponseDto> {
+  async deactivate(@Param('id', ParseObjectIdPipe) id: string): Promise<UserResponseDto> {
     return this.usersService.deactivate(id);
   }
 }

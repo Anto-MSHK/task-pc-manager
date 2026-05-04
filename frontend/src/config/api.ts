@@ -1,5 +1,5 @@
 import axios, { AxiosError, isAxiosError, type InternalAxiosRequestConfig } from 'axios';
-import { notification } from 'antd';
+import { notifyError } from './notify';
 import { useAuthStore } from '../store/authStore';
 import type { ApiErrorResponse, TokenPair } from '../types/api';
 
@@ -49,14 +49,11 @@ api.interceptors.request.use((config) => {
 function notifyApiError(error: AxiosError<ApiErrorResponse>) {
   const status = error.response?.status;
   const rawMessage = error.response?.data?.message;
-  const message = Array.isArray(rawMessage)
+  const description = Array.isArray(rawMessage)
     ? rawMessage.join(', ')
     : rawMessage ?? error.message;
 
-  notification.error({
-    message: status ? `API error ${status}` : 'API error',
-    description: message,
-  });
+  notifyError(status ? `API error ${status}` : 'API error', description);
 }
 
 function forceLogoutRedirect() {

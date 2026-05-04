@@ -1,5 +1,6 @@
 import { ProTable, type ProColumns } from '@ant-design/pro-components';
 import {
+  App,
   Button,
   Card,
   DatePicker,
@@ -12,7 +13,6 @@ import {
   Switch,
   Tag,
   Typography,
-  message,
 } from 'antd';
 import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
@@ -35,6 +35,7 @@ interface PromocodeForm {
 }
 
 export function PromocodesPage() {
+  const { message } = App.useApp();
   const range = useDateRangeStore((state) => state.range);
   const { loading, request, actionRef, formRef } = useAnalyticsTable<PromocodesAnalyticsRow>('/analytics/promocodes');
   const searchFormProps = useSearchFormProps(formRef);
@@ -64,10 +65,10 @@ export function PromocodesPage() {
 
     if (editing) {
       await api.patch(`/promocodes/${editing.id}`, payload);
-      message.success('Promocode updated');
+      void message.success('Promocode updated');
     } else {
       await api.post('/promocodes', payload);
-      message.success('Promocode created');
+      void message.success('Promocode created');
     }
 
     closeModal();
@@ -133,10 +134,13 @@ export function PromocodesPage() {
             type="link"
             danger
             disabled={!row.isActive}
-            onClick={async () => {
-              await api.patch(`/promocodes/${row.id}/deactivate`);
-              message.warning('Promocode deactivated');
-              actionRef.current?.reload();
+            onClick={() => {
+              void api
+                .patch(`/promocodes/${row.id}/deactivate`)
+                .then(() => {
+                  void message.warning('Promocode deactivated');
+                  actionRef.current?.reload();
+                });
             }}
           >
             Deactivate

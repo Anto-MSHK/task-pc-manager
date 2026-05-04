@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -12,6 +12,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { Request } from 'express';
+import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { RateLimitGuard } from '../common/guards/rate-limit.guard';
 import { ApplyPromocodeDto } from './dto/apply-promocode.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -32,6 +33,13 @@ interface RequestWithUser extends Request {
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
+
+  @Get()
+  @ApiOperation({ summary: 'List orders for the current user' })
+  @ApiOkResponse({ description: 'Orders returned successfully', type: [OrderResponseDto] })
+  async findAll(@Req() req: RequestWithUser): Promise<OrderResponseDto[]> {
+    return this.ordersService.findByUserId(req.user.sub);
+  }
 
   @Post()
   @ApiOperation({ summary: 'Create an order for the current user' })
@@ -59,7 +67,7 @@ export class OrdersController {
   @ApiNotFoundResponse({ description: 'Order or promocode not found' })
   @ApiConflictResponse({ description: 'Promocode is already applied or locked by another request' })
   async applyPromocode(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @Req() req: RequestWithUser,
     @Body() dto: ApplyPromocodeDto,
   ): Promise<OrderResponseDto> {

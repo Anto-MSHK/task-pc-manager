@@ -7,15 +7,15 @@ import { OutboxEvent } from './schemas/outbox-event.schema';
 import { SyncFailure } from './schemas/sync-failure.schema';
 
 type AggregateType = 'users' | 'promocodes' | 'orders' | 'promo_usages';
-type AnalyticsNamespace = 'users' | 'promocodes' | 'promo-usages' | 'summary';
+type AnalyticsNamespace = 'users' | 'promocodes' | 'promo-usages' | 'summary' | 'series';
 
 const ANALYTICS_NAMESPACES_BY_AGGREGATE: Record<AggregateType, AnalyticsNamespace[]> = {
   users: ['users', 'summary'],
   promocodes: ['promocodes', 'summary'],
-  // Orders affect user spend aggregates and promocode revenue aggregates.
-  orders: ['users', 'promocodes', 'summary'],
-  // Promo usage adds to all three table aggregates and the summary.
-  promo_usages: ['users', 'promocodes', 'promo-usages', 'summary'],
+  // Orders affect user spend aggregates, promocode revenue aggregates, and daily series.
+  orders: ['users', 'promocodes', 'summary', 'series'],
+  // Promo usage adds to all table aggregates, the summary, and daily series.
+  promo_usages: ['users', 'promocodes', 'promo-usages', 'summary', 'series'],
 };
 
 interface EnqueueOutboxEventInput {

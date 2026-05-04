@@ -10,6 +10,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { CreatePromocodeDto } from './dto/create-promocode.dto';
 import { PromocodeResponseDto } from './dto/promocode-response.dto';
 import { UpdatePromocodeDto } from './dto/update-promocode.dto';
@@ -42,7 +43,7 @@ export class PromocodesController {
   @ApiOperation({ summary: 'Get a promocode by id' })
   @ApiOkResponse({ description: 'Promocode returned successfully', type: PromocodeResponseDto })
   @ApiNotFoundResponse({ description: 'Promocode not found' })
-  async findOne(@Param('id') id: string): Promise<PromocodeResponseDto> {
+  async findOne(@Param('id', ParseObjectIdPipe) id: string): Promise<PromocodeResponseDto> {
     return this.promocodesService.findOne(id);
   }
 
@@ -52,7 +53,7 @@ export class PromocodesController {
   @ApiBadRequestResponse({ description: 'Invalid promocode payload' })
   @ApiNotFoundResponse({ description: 'Promocode not found' })
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @Body() dto: UpdatePromocodeDto,
   ): Promise<PromocodeResponseDto> {
     return this.promocodesService.update(id, dto);
@@ -62,7 +63,7 @@ export class PromocodesController {
   @ApiOperation({ summary: 'Deactivate a promocode' })
   @ApiOkResponse({ description: 'Promocode deactivated successfully', type: PromocodeResponseDto })
   @ApiNotFoundResponse({ description: 'Promocode not found' })
-  async deactivate(@Param('id') id: string): Promise<PromocodeResponseDto> {
+  async deactivate(@Param('id', ParseObjectIdPipe) id: string): Promise<PromocodeResponseDto> {
     return this.promocodesService.deactivate(id);
   }
 }

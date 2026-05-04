@@ -60,6 +60,11 @@ export class UsersService {
           session,
         );
       });
+    } catch (err) {
+      if (this.isDuplicateKeyError(err)) {
+        throw new ConflictException('Email already in use');
+      }
+      throw err;
     } finally {
       await session.endSession();
     }
@@ -204,6 +209,18 @@ export class UsersService {
    * Note: promo_usages is an append-only MergeTree, so each row is a historical snapshot
    * of the user/promocode at the moment of use; we intentionally don't rewrite it.
    */
+  /**
+   * Checks whether a Mongoose/MongoDB error is a duplicate key error (code 11000).
+   */
+  private isDuplicateKeyError(err: unknown): boolean {
+    return (
+      typeof err === 'object' &&
+      err !== null &&
+      'code' in err &&
+      (err as { code: unknown }).code === 11000
+    );
+  }
+
   private async syncUserCascade(user: User): Promise<void> {
     const userId = user._id.toString();
 

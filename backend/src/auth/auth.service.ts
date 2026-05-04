@@ -58,6 +58,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    if (!user.isActive) {
+      throw new UnauthorizedException('Account is deactivated');
+    }
+
     const tokens = await this.generateTokens(user._id.toString());
     return { ...tokens, user: new UserResponseDto(user.toObject()) };
   }
@@ -68,6 +72,8 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
     await this.redisService.getClient().del(`refresh_token:${refreshToken}`);
+
+    await this.usersService.ensureActiveById(userId);
 
     return this.generateTokens(userId);
   }

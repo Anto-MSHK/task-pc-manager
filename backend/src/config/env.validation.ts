@@ -11,6 +11,7 @@ interface EnvConfig {
   REDIS_PORT: string;
   REDIS_PASSWORD: string;
   PORT: string;
+  CORS_ORIGIN: string;
 }
 
 const requiredKeys = ['MONGODB_URI', 'JWT_ACCESS_SECRET'] as const;
@@ -35,5 +36,6 @@ export function validateEnv(config: Record<string, unknown>): EnvConfig {
     REDIS_PORT: String(config.REDIS_PORT ?? '6379'),
     REDIS_PASSWORD: String(config.REDIS_PASSWORD ?? ''),
     PORT: String(config.PORT ?? '3000'),
+    CORS_ORIGIN: String(config.CORS_ORIGIN ?? 'http://localhost:5173'),
   };
 }
