@@ -91,13 +91,7 @@ export function DashboardPage() {
 
   return (
     <div className="page-stack">
-      <div>
-        <Typography.Title level={1}>Dashboard</Typography.Title>
-        <Typography.Paragraph type="secondary">
-          Live ClickHouse metrics, daily trends, and promocode mix — date range is shared across the
-          app (Redis cache).
-        </Typography.Paragraph>
-      </div>
+      <Typography.Title level={1}>Dashboard</Typography.Title>
       <KpiCards {...totals} loading={summaryLoading || !summary} />
       <Suspense fallback={<DashboardChartsFullSkeleton />}>
         <DashboardCharts

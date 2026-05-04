@@ -26,6 +26,12 @@ docker compose --profile fullstack up --build -d
 
 > Таблицы ClickHouse создаются автоматически при старте бэкенда — ручного seed-скрипта не нужно.
 
+### Первый вход
+
+Seed-аккаунты отсутствуют. Откройте http://localhost:5173/register и создайте любой аккаунт (email + пароль от 6 символов). После регистрации вы сразу окажетесь в дашборде.
+
+Любой зарегистрированный пользователь видит всю аналитику — RBAC намеренно не реализован (упрощение для демонстрации CQRS/ClickHouse/Redis).
+
 ---
 
 ## Локальная разработка (DBs в Docker, приложения нативно)
@@ -36,7 +42,7 @@ docker compose up -d
 
 # 2. Backend (в отдельном терминале)
 cd backend
-cp .env.localdev.example .env   # или отредактировать .env вручную
+cp ../.env.localdev.example .env   # localhost-адреса вместо Docker-хостнеймов
 npm install
 npm run start:dev
 
@@ -46,7 +52,7 @@ npm install
 npm run dev
 ```
 
-`.env.localdev.example` использует `localhost` вместо Docker-хостнеймов сервисов.
+`.env.localdev.example` в корне проекта — содержит `localhost` адреса с host-mapped портами из `docker-compose.yml`.
 
 ---
 
@@ -197,7 +203,7 @@ Append-only история — `MergeTree` без `ReplacingMergeTree`, так �
 | **Кэш аналитики** | Результаты запросов к ClickHouse кэшируются с TTL 60 с. Ключи: `analytics:{namespace}:{hash(params)}` |
 | **Distributed lock** | При применении промокода: `SET lock:apply-promo:{promoId} {token} PX 5000 NX`. Освобождение через Lua-скрипт (атомарная проверка токена + DEL) |
 | **Refresh-токены** | `SETEX refresh_token:{token} {ttl} {userId}`. Однократное использование — токен удаляется сразу после валидации |
-| **Rate limiting** | Sliding window на `POST /orders/:id/apply-promocode`: не более 5 запросов в 10 секунд |
+| **Rate limiting** | Sliding window на `POST /orders/:id/apply-promocode`: не более 10 запросов за 60 секунд с одного IP |
 
 ---
 
