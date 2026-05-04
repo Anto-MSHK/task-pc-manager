@@ -69,3 +69,12 @@ export interface AnalyticsSummary {
   promoUsages: number;
   activePromocodes: number;
 }
+
+/** Daily aggregates for dashboard charts (orders.createdAt + promo_usages.usedAt). */
+export interface DashboardSeriesPoint {
+  date: string;
+  orders: number;
+  revenue: number;
+  promoUsages: number;
+  discount: number;
+}

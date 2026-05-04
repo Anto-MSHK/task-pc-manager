@@ -1,5 +1,27 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+export class DashboardSeriesPointDto {
+  @ApiProperty({ example: '2026-05-01' })
+  date!: string;
+
+  @ApiProperty({ example: 12 })
+  orders!: number;
+
+  @ApiProperty({ example: 15800.5 })
+  revenue!: number;
+
+  @ApiProperty({ example: 7 })
+  promoUsages!: number;
+
+  @ApiProperty({ example: 920 })
+  discount!: number;
+}
+
+export class DashboardSeriesResponseDto {
+  @ApiProperty({ type: () => [DashboardSeriesPointDto] })
+  series!: DashboardSeriesPointDto[];
+}
+
 export class AnalyticsSummaryDto {
   @ApiProperty({ example: 8 })
   activeUsers!: number;

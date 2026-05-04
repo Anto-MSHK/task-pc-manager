@@ -1,13 +1,25 @@
 import { ProTable, type ProColumns } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
 import { Card, Typography } from 'antd';
-import { useMemo } from 'react';
-import { KpiCards } from '../components/KpiCards';
+import { lazy, Suspense, useMemo } from 'react';
+import { DashboardChartsFullSkeleton } from '../components/DashboardChartSkeletons';
 import { AnalyticsTableHost } from '../components/AnalyticsTableHost';
+import { KpiCards } from '../components/KpiCards';
 import { api } from '../config/api';
 import { useAnalyticsTable } from '../hooks/useAnalyticsTable';
 import { useDateRangeStore } from '../store/dateRangeStore';
-import type { AnalyticsSummary, UsersAnalyticsRow } from '../types/api';
+import type {
+  AnalyticsPage,
+  AnalyticsSummary,
+  DashboardSeriesPoint,
+  PromocodesAnalyticsRow,
+  UsersAnalyticsRow,
+} from '../types/api';
+
+const DashboardCharts = lazy(async () => {
+  const m = await import('../components/DashboardCharts');
+  return { default: m.DashboardCharts };
+});
 
 export function DashboardPage() {
   const range = useDateRangeStore((state) => state.range);
@@ -25,6 +37,29 @@ export function DashboardPage() {
     queryKey: ['dashboard-summary', dateParams],
     queryFn: async () =>
       (await api.get<AnalyticsSummary>('/analytics/summary', { params: dateParams })).data,
+  });
+
+  const { data: seriesPayload, isLoading: seriesLoading } = useQuery({
+    queryKey: ['dashboard-series', dateParams],
+    queryFn: async () =>
+      (await api.get<{ series: DashboardSeriesPoint[] }>('/analytics/series', { params: dateParams }))
+        .data,
+  });
+
+  const { data: topPromosPage, isLoading: topPromosLoading } = useQuery({
+    queryKey: ['dashboard-top-promocodes', dateParams],
+    queryFn: async () =>
+      (
+        await api.get<AnalyticsPage<PromocodesAnalyticsRow>>('/analytics/promocodes', {
+          params: {
+            ...dateParams,
+            current: 1,
+            pageSize: 8,
+            sortField: 'usageCount',
+            sortOrder: 'descend',
+          },
+        })
+      ).data,
   });
 
   const totals = useMemo(
@@ -59,10 +94,21 @@ export function DashboardPage() {
       <div>
         <Typography.Title level={1}>Dashboard</Typography.Title>
         <Typography.Paragraph type="secondary">
-          Live ClickHouse analytics with a shared Redis-cached date range.
+          Live ClickHouse metrics, daily trends, and promocode mix — date range is shared across the
+          app (Redis cache).
         </Typography.Paragraph>
       </div>
       <KpiCards {...totals} loading={summaryLoading || !summary} />
+      <Suspense fallback={<DashboardChartsFullSkeleton />}>
+        <DashboardCharts
+          series={seriesPayload?.series ?? []}
+          summary={summary}
+          topPromocodes={topPromosPage?.data ?? []}
+          loadingSeries={seriesLoading}
+          loadingSummary={summaryLoading}
+          loadingPromocodes={topPromosLoading}
+        />
+      </Suspense>
       <Card className="glass-card table-card dashboard-table-card">
         <AnalyticsTableHost loading={tableLoading}>
           <ProTable<UsersAnalyticsRow>

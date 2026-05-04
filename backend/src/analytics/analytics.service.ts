@@ -12,6 +12,7 @@ import {
   AnalyticsPage,
   AnalyticsSummary,
   CountRow,
+  DashboardSeriesPoint,
   PromoUsageAnalyticsRow,
   PromocodesAnalyticsRow,
   UsersAnalyticsRow,
@@ -35,11 +36,13 @@ export class AnalyticsService {
    * Called on CRUD mutations so that users see fresh data without waiting 30s.
    */
   async invalidateCache(
-    ...namespaces: Array<'users' | 'promocodes' | 'promo-usages' | 'summary'>
+    ...namespaces: Array<'users' | 'promocodes' | 'promo-usages' | 'summary' | 'series'>
   ): Promise<void> {
     const client = this.redisService.getClient();
     const targets =
-      namespaces.length > 0 ? namespaces : ['users', 'promocodes', 'promo-usages', 'summary'];
+      namespaces.length > 0
+        ? namespaces
+        : ['users', 'promocodes', 'promo-usages', 'summary', 'series'];
 
     await Promise.all(
       targets.map(async (ns) => {
@@ -307,6 +310,99 @@ export class AnalyticsService {
 
     await this.redisService.getClient().setex(key, CACHE_TTL_SECONDS, JSON.stringify(summary));
     return summary;
+  }
+
+  async getSeries(query: AnalyticsSummaryQueryDto): Promise<DashboardSeriesPoint[]> {
+    const key = `analytics:series:${JSON.stringify(query)}`;
+    const cached = await this.redisService.getClient().get(key);
+    if (cached) {
+      return JSON.parse(cached) as DashboardSeriesPoint[];
+    }
+
+    const params: QueryParams = {};
+    if (query.dateFrom) {
+      params.dateFrom = query.dateFrom.toISOString();
+    }
+    if (query.dateTo) {
+      params.dateTo = query.dateTo.toISOString();
+    }
+
+    const ordersDateFilter = this.buildSeriesDateFilter(query, 'createdAt');
+    const usagesDateFilter = this.buildSeriesDateFilter(query, 'usedAt');
+
+    type SeriesAggRow = {
+      day: string;
+      orders: string | number;
+      revenue: string | number;
+      promoUsages: string | number;
+      discount: string | number;
+    };
+
+    const rows = await this.clickhouseService.queryRows<SeriesAggRow>(
+      `
+        WITH latest_orders AS (
+          SELECT
+            id,
+            argMax(finalAmount, updatedAt) AS finalAmount,
+            argMax(promocodeId, updatedAt) AS promocodeId,
+            min(createdAt) AS createdAt
+          FROM orders
+          GROUP BY id
+        )
+        SELECT
+          formatDateTime(series_inner.day, '%Y-%m-%d') AS day,
+          sum(series_inner.orders_cnt) AS orders,
+          sum(series_inner.revenue_sum) AS revenue,
+          sum(series_inner.promo_cnt) AS promoUsages,
+          sum(series_inner.discount_sum) AS discount
+        FROM (
+          SELECT
+            toDate(createdAt) AS day,
+            toUInt64(count()) AS orders_cnt,
+            ifNull(toFloat64(sum(finalAmount)), 0) AS revenue_sum,
+            toUInt64(0) AS promo_cnt,
+            toFloat64(0) AS discount_sum
+          FROM latest_orders
+          ${ordersDateFilter}
+          GROUP BY day
+          UNION ALL
+          SELECT
+            toDate(usedAt) AS day,
+            toUInt64(0),
+            toFloat64(0),
+            toUInt64(count()),
+            ifNull(toFloat64(sum(discountAmount)), 0)
+          FROM promo_usages
+          ${usagesDateFilter}
+          GROUP BY day
+        ) AS series_inner
+        GROUP BY series_inner.day
+        ORDER BY series_inner.day
+      `,
+      params,
+    );
+
+    const series: DashboardSeriesPoint[] = rows.map((row) => ({
+      date: String(row.day),
+      orders: Number(row.orders ?? 0),
+      revenue: Number(row.revenue ?? 0),
+      promoUsages: Number(row.promoUsages ?? 0),
+      discount: Number(row.discount ?? 0),
+    }));
+
+    await this.redisService.getClient().setex(key, CACHE_TTL_SECONDS, JSON.stringify(series));
+    return series;
+  }
+
+  private buildSeriesDateFilter(query: AnalyticsSummaryQueryDto, column: string): string {
+    const parts: string[] = [];
+    if (query.dateFrom) {
+      parts.push(`${column} >= parseDateTimeBestEffort({dateFrom:String})`);
+    }
+    if (query.dateTo) {
+      parts.push(`${column} <= parseDateTimeBestEffort({dateTo:String})`);
+    }
+    return parts.length > 0 ? `WHERE ${parts.join(' AND ')}` : '';
   }
 
   private async readPage<T extends object>(

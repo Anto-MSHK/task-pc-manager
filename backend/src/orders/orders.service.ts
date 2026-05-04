@@ -77,7 +77,7 @@ export class OrdersService {
       await session.endSession();
     }
 
-    await this.analyticsService.invalidateCache('users', 'summary');
+    await this.analyticsService.invalidateCache('users', 'summary', 'series');
     return new OrderResponseDto(createdOrder.toObject());
   }
 

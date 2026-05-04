@@ -16,12 +16,14 @@ import {
 import {
   AnalyticsPage,
   AnalyticsSummary,
+  DashboardSeriesPoint,
   PromoUsageAnalyticsRow,
   PromocodesAnalyticsRow,
   UsersAnalyticsRow,
 } from './analytics.types';
 import {
   AnalyticsSummaryDto,
+  DashboardSeriesResponseDto,
   PromoUsagesAnalyticsPageDto,
   PromocodesAnalyticsPageDto,
   UsersAnalyticsPageDto,
@@ -42,6 +44,17 @@ export class AnalyticsController {
   })
   async summary(@Query() query: AnalyticsSummaryQueryDto): Promise<AnalyticsSummary> {
     return this.analyticsService.getSummary(query);
+  }
+
+  @Get('series')
+  @ApiOperation({ summary: 'Daily orders / revenue / promo usage for charts' })
+  @ApiOkResponse({
+    description: 'Time series buckets returned successfully',
+    type: DashboardSeriesResponseDto,
+  })
+  async series(@Query() query: AnalyticsSummaryQueryDto): Promise<{ series: DashboardSeriesPoint[] }> {
+    const series = await this.analyticsService.getSeries(query);
+    return { series };
   }
 
   @Get('users')

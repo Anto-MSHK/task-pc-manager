@@ -60,6 +60,8 @@ export class PromocodesService {
       await session.endSession();
     }
 
+    // Keep analytics (ClickHouse) in sync immediately; outbox still runs for durability retries.
+    await this.clickhouseService.insertRows('promocodes', [this.toOutboxPayload(created)]);
     await this.analyticsService.invalidateCache('promocodes', 'summary');
     return new PromocodeResponseDto(created.toObject());
   }
@@ -119,6 +121,7 @@ export class PromocodesService {
       await session.endSession();
     }
 
+    await this.clickhouseService.insertRows('promocodes', [this.toOutboxPayload(updated)]);
     await this.syncPromocodeCascade(updated);
     await this.analyticsService.invalidateCache();
 

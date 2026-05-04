@@ -109,6 +109,14 @@ export interface AnalyticsSummary {
   activePromocodes: number;
 }
 
+export interface DashboardSeriesPoint {
+  date: string;
+  orders: number;
+  revenue: number;
+  promoUsages: number;
+  discount: number;
+}
+
 export interface ApiErrorResponse {
   statusCode: number;
   message: string | string[];

@@ -12,7 +12,7 @@ import './styles/global.css';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <ConfigProvider theme={{ ...theme, algorithm: antdTheme.darkAlgorithm }} locale={enUS}>
+    <ConfigProvider theme={{ ...theme, algorithm: antdTheme.darkAlgorithm, cssVar: { key: 'app' } }} locale={enUS}>
       <ProConfigProvider intl={enUSIntl}>
         <AntApp>
           <QueryClientProvider client={queryClient}>

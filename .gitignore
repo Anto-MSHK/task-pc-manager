@@ -10,3 +10,4 @@ coverage
 # E2E test artifacts (Playwright browser binaries + screenshots)
 /e2e/.pw-browsers
 /e2e/screenshots
+.playwright-mcp

@@ -1,5 +1,6 @@
-import { Card, Col, Row, Statistic } from 'antd';
 import { DollarOutlined, PercentageOutlined, ShoppingCartOutlined, UserOutlined } from '@ant-design/icons';
+import { Card, Col, Row, Statistic } from 'antd';
+import type { ReactNode } from 'react';
 
 interface KpiCardsProps {
   users: number;
@@ -9,8 +10,15 @@ interface KpiCardsProps {
   loading?: boolean;
 }
 
+interface KpiCardSpec {
+  title: string;
+  value: number;
+  precision?: number;
+  prefix: ReactNode;
+}
+
 export function KpiCards({ users, orders, discount, promocodes, loading = false }: KpiCardsProps) {
-  const cards = [
+  const cards: KpiCardSpec[] = [
     {
       title: 'Active users',
       value: users,
@@ -45,7 +53,12 @@ export function KpiCards({ users, orders, discount, promocodes, loading = false 
                 <span className="skeleton-shimmer kpi-skeleton-value" />
               </div>
             ) : (
-              <Statistic title={card.title} value={card.value} precision={card.precision} prefix={card.prefix} />
+              <Statistic
+                title={card.title}
+                value={card.value}
+                precision={card.precision}
+                prefix={card.prefix}
+              />
             )}
           </Card>
         </Col>
